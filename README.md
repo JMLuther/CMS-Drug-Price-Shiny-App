@@ -14,6 +14,7 @@ This dataset contains average drug prices paid by Medicare Part D and Part B cla
 
 Some results differ for reasons that are not clear to me, and hopefully others will help clean this data and fix these discrepancies. The rebates may also explain the difference in cost. In general, the Total Cost for the highest cost drugs are approximately twice the actual CMS Total Drug cost, although there is a highly variable relationship between the two. Similarly, the trends in unit prices and total costs generally reflect the actual CMS costs.  
   *  As examples, compare Harvoni, Advair Diskus, Lyrica, Humira, Sovaldi, Vyvanse  
+  *  If you can contribute to cleaning this data, I welcome it.  
 
 ## Source Data  
 Click on the "Part D data" link to download the .zip folder containing the excel file.  The data is not clean, and a few dataframe tidying steps are needed.  The data handling code can be found in the `data-raw` folder  
