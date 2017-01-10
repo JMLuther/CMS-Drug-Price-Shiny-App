@@ -14,7 +14,9 @@ This dataset contains average drug prices paid by Medicare Part D and Part B cla
 
 Some results differ for reasons that are not clear to me, and hopefully others will help clean this data and fix these discrepancies. The rebates may also explain the difference in cost. In general, the Total Cost for the highest cost drugs are approximately twice the actual CMS Total Drug cost, although there is a highly variable relationship between the two. Similarly, the trends in unit prices and total costs generally reflect the actual CMS costs.  
   *  As examples, compare Harvoni, Advair Diskus, Lyrica, Humira, Sovaldi, Vyvanse  
-  *  If you can contribute to cleaning this data, I welcome it.  
+  *  If you can contribute to cleaning this data, I welcome it. I've started to list these as "Issues" on the github page.
+  
+Once the kinks have been worked out sufficiently, I will publish the ShinyApp
 
 ## Source Data  
 Click on the "Part D data" link to download the .zip folder containing the excel file.  The data is not clean, and a few dataframe tidying steps are needed.  The data handling code can be found in the `data-raw` folder  
@@ -23,8 +25,13 @@ Click on the "Part D data" link to download the .zip folder containing the excel
   *  The data is in wide format, with repeated variables representing the same thing, just different years (e.g., `cost_2011`, `cost_2012`, etc.).  This is cleaned up quickly using a few `tidyr` and `dplyr` functions.:  
   *  For some reason, CMS just calculated the price change for the year 2015, even though data is there for every year.  I've calculated for each year.  
   
-## Credits (not necessarily comprehensive):  
+## Credits (not comprehensive)  
   1.  [CMS.gov](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Dashboard/2015-Medicaid-Drug-Spending/2015-Medicaid-Drug-Spending.html) who releases data for public use  
-  2.  (Multiple tidyverse packages)[https://github.com/tidyverse/tidyverse]  
-  3.  [ggiraph](https://twitter.com/davidgohel?lang=en) to make the graphs interactive  
+  2.  [Multiple tidyverse packages](https://github.com/tidyverse/tidyverse)  
+  3.  [ggiraph](https://github.com/davidgohel/ggiraph) by [David Gohel](https://twitter.com/davidgohel?lang=en) to make the graphs interactive  
   4.  [Shiny](http://shiny.rstudio.com/)  
+
+Note, the following packages need to be installed from github, rather than CRAN:  
+
+  *  `ggiraph`  
+  *  `ggplot2`
