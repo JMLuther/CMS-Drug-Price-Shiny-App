@@ -1,0 +1,403 @@
+---
+title: "Making interactive ggiraph figures with CMS drug cost data"
+author: "JM Luther"
+date: "December 10, 2016"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    code_folding: hide 
+    number_sections: TRUE
+    theme: sandstone
+    highlight: haddock
+    fig_caption: FALSE
+---
+
+# Purpose
+
+This document is intended to guide you through making a `ggplot2` figure interactive, and then modify a simple custom "tooltip" to augment the figure using the [`ggiraph`](https://github.com/davidgohel/ggiraph) interactive plotting package. 
+
+This document assumes you know very little about `CSS` and `html`, because I certainly don't.  It does assume you can do some basic data wrangling and make some simple figures using `ggplot2`. These things won't be covered here, because there are plenty of details elsewher to help learn these skills, such as:
+
+  *  The website reference [`ggplot2` website](http://docs.ggplot2.org/current/)  
+  *  The reference book [*ggplot2*](https://www.amazon.com/ggplot2-Elegant-Graphics-Data-Analysis/dp/331924275X/ref=dp_ob_title_bk).   
+  *  The introductory R online book [R for Data Science](http://r4ds.had.co.nz/). This is the place to start learning R if you need the basics.  
+
+## The `ggiraph` Package
+
+The `ggiraph` package by [David Gohel](https://twitter.com/davidgohel)) makes ggplot figures interactive, by providing one of three actions to the data:  
+
+  *  `tooltip`: column of dataset that contains tooltips to be displayed when mouse is over elements.  
+  *  `onclick`: column of dataset that contains javascript function to be executed when elements are clicked. 
+  *  `data_id`: column of dataset that contains id to be associated with elements.  
+
+For some nice examples of interactive features made with the ggiraph package, see:
+
+  * [this map by Bob Rudis](https://beta.rstudioconnect.com/hrbrmstr/ggiraphe/ggiraphe.html)  
+  * [this Olympic bargraph by Duc Quang Nguyen](http://www.swissinfo.ch/eng/rio-2016-_swiss-olympians---the-solo-specialists-/42349156?utm_content=buffer9f406&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer). Possibly my favorite  
+  * [this time series by Duc Quang Nguyen](http://www.swissinfo.ch/eng/by-the-numbers_a-greying-planet-from-north-to-south/42207298)  
+  * [this map by Duc Quang Nguyen](http://www.swissinfo.ch/fre/s%C3%A9rie-migration--partie-4-_les-diff%C3%A9rents-visages-de-l-immigration-en-europe/42469276?utm_content=buffer570f5&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer)  
+  * [this map by Duc Quang Nguyen](http://www.swissinfo.ch/eng/migration-series--part-1-_who-are-the-25--foreign-population-in-switzerland-/42412156?utm_content=bufferd6a4b&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer)  
+
+# CMS Drug Price Data  
+
+Medicare releases data to the public on their website, and they recently released a dataset with the cost of medications paid by Medicaid Part D, which accounts for ~75% of medications paid for by Medicaid.  This does not include any data from private insurers, and therefore this data is representative of a different population that the average insured American. 
+
+Data can be download  as an Excel file (.xlsx) from the [2015 Medicare Drug Spending Data](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Information-on-Prescription-Drugs/2015MedicareData.html) and contains drug costs paid by Medicare Part D between 2011-2015.  Click on the "Part D data" link to download the .zip folder containing the excel file.  
+
+The data is not clean, and a few dataframe tidying steps are needed.   
+
+  *  Import data using the `read_excel` function from the `readxl` package.  Need to download just the Data sheet, and avoid the first few lines.  
+  *  Variable names are not acceptable and need to be cleaned up
+  *  The data is in wide format, with repeated variables representing the same thing, just different years (e.g., `cost_2011`, `cost_2012`, etc.).  This is cleaned up quickly using a few `tidyr` and `dplyr` functions.   
+  *  For some reason, CMS just calculated the price change for the year 2015, even though data is there for every year.  I'll calculate for each year.  
+  
+Load the data for real.
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(stringi)
+getwd()
+drugData <- readRDS(file="drugData.rds")
+
+library(ggiraph)
+hover_css <- "stroke:orange;stroke-width:3"
+#tooltip_css <- "border-radius:10px 10px 10px 10px;"
+
+```
+
+# Simple ggplot  {.tabset .pilltabs}  
+
+The first basic example will demonstrate the basic time-series plot generated using `ggplot` versus `ggplot + ggiraph`. 
+
+There are multiple versions of amlodipine available, which you can see by the multiple trend lines.  
+
+  *  Brand-name (Norvasc). the most expensive.  
+  *  Combination formulations (amlodipine/atorvastatin)  
+  *  Generic Amlodipine. the cheapest version
+
+## ggplot
+
+```{r, message=FALSE, warning=FALSE}
+drug <- "Amlodipine"
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation)) +
+  geom_line(color="grey50") +
+  geom_point(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(drug, " Cost (2011-2015)")) +
+  ggthemes::theme_tufte()
+fig
+```
+
+## +ggiraph
+
+```{r, message=FALSE, warning=FALSE}
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=brand_name,
+             data_id=formulation)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(stringi::stri_trans_totitle(drug), " Cost (2011-2015)")) +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.6,  hover_css = hover_css)
+```
+
+The `hover_css` makes the line or point turn orange when the pointer hovers over the data point.  
+The `tooltip=brand_name` makes the data in the `brand_name` variable appear when the pointer hovers over the data.  It is not formatted and has no fancy bells or whistles. It would be nice to make it look a little better than this.
+
+
+# Modify a simple tooltip  
+
+More data can be added to the tooltip, by storing this information in a new data column `drugData$tip` to pull into the tooltip text.  This will just be plain text of the drug brand name and generic name. 
+
+  *  `paste0` strings the text together, and `/n` creates a line break so drug names will display on separate lines.   
+  *  The aesthetic aes(`tooltip=tip`) tells the tooltip to lookup text in the `drugData$tip` column for the information.  
+
+```{r, message=FALSE, warning=FALSE}
+drugData$tip <- paste0(drugData$brand_name,"\n",
+                       drugData$generic_name)
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=formulation)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(stringi::stri_trans_totitle(drug), " Cost (2011-2015)"),
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+
+```
+
+
+# More tooltip modifications
+
+Even more data can be added to the tooltip, and the text format can be improved.  This will contain html format text, so it helps to understand some basic html formatting. The `html` contains the content of the webpage.  The formatting can be controlled by CSS (Cascading Style Sheets) commands.
+
+There are several ways to control the style of the html page using CSS:  
+
+  *   Link to an external CSS file (style.css)  
+      * In the rmarkdown header (css: "style.css")  
+      * Using `includeCSS("style.css")  
+      * There are other options if creating a Shiny app (include in `www/` folder).  
+  *   Write CSS style in the header  
+  *   Write CSS in style attribute within html tags  
+
+If CSS is included in more than one place, there are rules to determine which rules:  
+  CSS in an html tag > header CSS style > CSS file  
+  
+
+
+
+
+Some other useful html/CSS basics:  
+
+  *  Paragraphs/Lines:  
+      *  require an opening tag  (*e.g.*, `<p>`) and closing tag (`</p>`) given around each block:  
+         * `<strong> The text in between will be controlled by the CSS setting for "strong" (currently {color: gold;}) </strong>`  
+         * <strong> The text in between will be controlled by the CSS setting for "strong" (currently {color: gold;})  </strong>  
+      *  `<p>` paragraph:  
+      *  `<br>` line break:   
+      *  `<hr />` horizontal line: do not need to use line break before this.  
+  *  Text format:  
+      *  `<em>` emphasis: usually italic  
+      *  `<strong>` strong: usually bolds  
+      *  `<i>` italic: usually, unless overridden in the .css file.  
+  *  Tables:  
+      * `<table>` start/end table  
+      * `<tr>` table row  
+      * `<th>` table header (usually bold, centered)  
+      * `<td>` table cell detail (usually normal, left-aligned)  
+      * `<colgroup>`, `<col>`, 
+          *  can control format of cell groups: `<col span="2" style="background-color:red">`
+
+Further resources with CSS details:  
+
+  1.  [w3schools.com](http://www.w3schools.com/css/css_tooltip.asp) which contains introduction, tutorials, and working examples.  
+  2.  [w3schools.com HTML tag reference](http://www.w3schools.com/tags/tag_hr.asp)  
+  3.  [Mozilla developor network](https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Getting_Started/What_is_CSS)  
+
+Details to create a custom tooltip:  
+
+  *  Will combine html tags (e.g., `<p>`, `<hr />`) with text using the `paste0` command to create the `drugData$tip` field  
+  *  While we're at it, we'll convert the Drug names to title case using a command from the `stringi` package.  
+  *  and add some cost data
+
+```{r, message=FALSE, warning=FALSE}
+drugData$tip <-
+  paste0("<p>", stri_trans_totitle(drugData$brand_name),"</p>",
+         "<p>(",stri_trans_totitle(drugData$generic_name), ")<p>",
+         "<hr />", 
+         "Unit Cost: $", round(drugData$average_cost_per_unit, 2),"<br>")
+
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=formulation)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(stringi::stri_trans_totitle(drug), " Cost (2011-2015)"),
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+```
+
+# Extra Tooltip formatting
+
+Some additional formatting can be added to the tooltip from with the `drugData$tip` text field:  
+
+  * Use `<h3>` and `<h5>` header tags to control the size of the text  
+  * Use `<strong>` to format the text. The CSS instructs it to format as color: gold.   
+  * Use `<hr \>` to insert a line break with horizontal line  
+  * add additional data summaries  
+
+```{r, message=FALSE, warning=FALSE}
+drugData$tip <-
+  paste0("<h3><strong><span style=\"color: gold\"}>", stri_trans_totitle(drugData$brand_name),"</span></strong><br></h3>",
+         "<h4><strong><span style=\"color: gold\"}>(",stri_trans_totitle(drugData$generic_name), ")</span></strong></h4>",
+         "<hr />", 
+         "Total Cost(millions): $", round(drugData$total_spending/1000000, 2),"<br>",
+         "Total Cost (%ile): ", round(drugData$pctile_total_cost, 2),  "<br>",
+         "Total Cost (Rank): #", drugData$rank_total, " of ", drugData$nDrugs, "<br>",
+         "<hr />", 
+         "Unit Cost: $", round(drugData$average_cost_per_unit, 2),"<br>",
+         "Unit Cost (%ile): ", round(drugData$pctile_cost_per_unit, 2), "<br>",
+         "Unit Cost (Rank): #", drugData$rank_avg_cost, " of ", drugData$nDrugs, "<br>",
+         "Price change($): $", ifelse(is.na(drugData$annual_change_per_unit), "", ifelse(drugData$annual_change_per_unit>0, "+", "")),
+         ifelse(is.na(drugData$annual_change_per_unit)," --- ",round(drugData$annual_change_per_unit, 2)),  "<br>",
+         "Price change(%): ",ifelse(is.na(drugData$annual_change_per_unit_pct), "", ifelse(drugData$annual_change_per_unit_pct>0, "+", "")),
+         ifelse(is.na(drugData$annual_change_per_unit_pct)," --- ",round(drugData$annual_change_per_unit_pct, 2)), "%<br>")
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=formulation)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(stringi::stri_trans_totitle(drug), " Cost (2011-2015)"),
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+```
+
+
+# Using a custom CSS file {#customcss .text .strong}  
+
+The tooltip will be formatted using the default CSS formats for the html tags provided in the `tip` field.  For example, `<h3>` will be formatted as a larger font than `<h5>` tagged text.
+
+Formatting can be applied across the document by changing the default formatting for these tags in the CSS file.  This can be added to the header at the top of the Rmd file as `css: mystyle.css`  
+
+According to the knitr documentation, CSS can be applied selectively to a specific section, but I can't figure this out yet.
+
+  *  Create a .css file in RStudio (as a text file, saved with the .css extension).  
+
+> `<style>`  
+> `text { font-family:"Helvetica"; }`  
+> `strong {color: gold;}`  
+> `</style>`  
+
+
+```{r, message=FALSE, warning=FALSE}
+fig <- drugData[grep(drug, drugData$generic_name, ignore.case = T), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=formulation)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title=paste0(stringi::stri_trans_totitle(drug), " Cost (2011-2015)"),
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+  
+
+```
+
+# Exploratory Analysis    
+
+## Top 1% Drugs: unit cost  
+
+A summary of the most expensive 1% of drugs (year 2015, per unit cost)  
+```{r, message=FALSE, warning=FALSE}
+mostExpensive2015 <- 
+  drugData %>% filter(year==2015 & pctile_cost_per_unit>=0.99) 
+fig <- 
+  drugData[which(drugData$brand_name %in% mostExpensive2015$brand_name), ] %>% 
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=brand_name)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title="Top 1% Drug Costs (2011-2015)",
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+  
+
+```
+
+## Top 1% Drugs: Total cost  
+
+A summary of the most expensive 1% of drugs (year 2015, Total Cost)  
+```{r, message=FALSE, warning=FALSE}
+mostExpensive2015 <- 
+  drugData %>% filter(year==2015 & pctile_total_cost>=0.99)
+fig <- 
+  drugData[which(drugData$brand_name %in% mostExpensive2015$brand_name), ] %>% 
+  group_by(formulation) %>% 
+  ggplot(aes(year, total_spending, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=brand_name)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+#  scale_y_log10(labels=scales::dollar) +
+  labs(x="Year", y="Total cost (in millions $)",
+       title="Top 1% Drug Costs (2011-2015)",
+       subtitle="Total Cost") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+  
+
+```
+
+## Largest Price increase (2015)  
+
+A summary of the drugs with the 20 largest price increase (year 2015, Unit Cost)  
+```{r, message=FALSE, warning=FALSE}
+largestPriceIncrease2015 <- 
+  drugData %>% filter(year==2015) %>% arrange(desc(annual_change_per_unit_pct)) %>% 
+  filter(row_number()==1:20)
+fig <- 
+  drugData[which(drugData$brand_name %in% largestPriceIncrease2015$brand_name), ] %>% 
+#  drugData[which(drugData$brand_name %in% c("SALEX", "SALICYLIC ACID")), ] %>%
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=brand_name)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+#  scale_y_log10(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title="Drugs with largest %age price increase (2011-2015)",
+       subtitle="Average Price per Unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+  
+
+```
+
+
+## EpiPen prices
+
+```{r, message=FALSE, warning=FALSE}
+fig <- 
+  drugData[grep("(ADRENACLICK|EPIPEN|TWINJECT)", drugData$brand_name, ignore.case = T), ] %>% 
+  group_by(formulation) %>% 
+  ggplot(aes(year, average_cost_per_unit, group=formulation, 
+             tooltip=tip, use_jquery=TRUE,
+             data_id=brand_name)) + 
+  geom_line_interactive(color="grey50") +
+  geom_point_interactive(color="red") + 
+  scale_y_continuous(labels=scales::dollar) +
+  labs(x="Year", y="Average cost/unit",
+       title="Injectable Epinephrine Prices (2011-2015)",
+       subtitle="Cost per unit") +
+  ggthemes::theme_tufte()
+ggiraph(code = print(fig), width=0.5, hover_css = hover_css)
+```
+
+
+# other options to incorporate:  
+
+  *   jitter the points and connecting lines  
+  *   make it into a Shiny App  
+  *   make the CSS fancier  
+
+
+# Session Info
+```{r}
+sessionInfo()
+```
+
