@@ -3,6 +3,7 @@ shinyUI(
             titlePanel("Medicare Part D Drug Price Trends"),
             div("An interactive App, created by", tags$a(href= "https://twitter.com/DrJMLuther","J.M. Luther"),
                 "with ", tags$a(href= "http://shiny.rstudio.com/", "RStudio/Shiny")),
+            p("Code and relevant files can be found on ", tags$a(href="https://github.com/JMLuther/CMS-Drug-Price-Shiny-App", "GitHub")),
             br(),
             p("This dataset contains average drug prices paid by Medicare Part D and Part B claims, which account for ~75% of medications paid for by Medicaid. This does not include any data from private insurers, and therefore it is not representative of the general population. These data also do not account for manufacturer rebates, which reduce the actual cost paid by Medicare/Medicaid"),
             p("Part B data is summarised by drug when possible, and all possible drugs are contained in the datasets. A subset of drug data is available at ", tags$a(href="https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Dashboard/2015-Medicaid-Drug-Spending/2015-Medicaid-Drug-Spending.html", "CMS Medicaid dashboard"),". Some results differ for reasons that are not clear to me. The rebates may also explain the difference in cost"),
