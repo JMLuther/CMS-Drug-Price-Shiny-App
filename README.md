@@ -1,8 +1,18 @@
 # CMS-Drug-Price-Shiny-App
-
-Interactive Medicare Part B and D Drug Prices for 2011-2015  
+This site contains the source files and data for:
+An Interactive Shiny App for Medicare Part B and D Drug Prices for 2011-2015  
 by [JM Luther](https://twitter.com/DrJMLuther)
 
+Plans are to eventually release/publish the functioning app online, but until then it can be run from within RStudio/R using the following 3 files:  
+  *  `ui.r`  
+  *  `server.r`  
+  *  `drugData.rds`  
+
+To get an intro to Shiny Apps in R:
+  *  [Dean Attali blog](http://deanattali.com/blog/building-shiny-apps-tutorial/?utm_content=bufferf24e6&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer)
+  *  [Zev Ross blog](http://zevross.com/blog/2016/04/19/r-powered-web-applications-with-shiny-a-tutorial-and-cheat-sheet-with-40-example-apps/)
+  *  [RStudio Shiny tutorial](http://shiny.rstudio.com/tutorial/)
+  
 ## Medicare Part B & D Data  
 
 Medicare releases data to the public on their website, and they recently released a dataset with the cost of medications paid by Medicaid Part D, which accounts for ~75% of medications paid for by Medicaid.  This does not include any data from private insurers, and therefore this data is representative of a different population that the average insured American. Data can be download  as an Excel file (.xlsx) from the [2015 Medicare Drug Spending Data](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Information-on-Prescription-Drugs/2015MedicareData.html). It contains drug costs paid by Medicare Part D between 2011-2015. 
